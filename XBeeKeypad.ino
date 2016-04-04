@@ -12,7 +12,7 @@
 || #
 */
 
-SoftwareSerial XBee(2, 3); // RX, TX
+SoftwareSerial XBee(0, 1); // RX, TX
 
 const byte ROWS = 8; //eight rows
 const byte COLS = 5; //five columns
