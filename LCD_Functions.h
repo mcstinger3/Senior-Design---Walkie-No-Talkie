@@ -1,5 +1,6 @@
 #include <Arduino.h>
 
+
 /* Pin definitions:
 Most of these pins can be moved to any digital or analog pin.
 DN(MOSI)and SCLK should be left where they are (SPI pins). The
@@ -289,89 +290,7 @@ void setLine(int x0, int y0, int x1, int y1, boolean bw)
   }
 }
 
-// setRect will draw a rectangle from x0,y0 top-left corner to
-// a x1,y1 bottom-right corner. Can be filled with the fill
-// parameter, and colored with bw.
-// This function was grabbed from the SparkFun ColorLCDShield
-// library.
-void setRect(int x0, int y0, int x1, int y1, boolean fill, boolean bw)
-{
-  // check if the rectangle is to be filled
-  if (fill == 1)
-  {
-    int xDiff;
 
-    if(x0 > x1)
-      xDiff = x0 - x1; //Find the difference between the x vars
-    else
-      xDiff = x1 - x0;
-
-    while(xDiff > 0)
-    {
-      setLine(x0, y0, x0, y1, bw);
-
-      if(x0 > x1)
-        x0--;
-      else
-        x0++;
-
-      xDiff--;
-    }
-  }
-  else
-  {
-    // best way to draw an unfilled rectangle is to draw four lines
-    setLine(x0, y0, x1, y0, bw);
-    setLine(x0, y1, x1, y1, bw);
-    setLine(x0, y0, x0, y1, bw);
-    setLine(x1, y0, x1, y1, bw);
-  }
-}
-
-// setCircle draws a circle centered around x0,y0 with a defined
-// radius. The circle can be black or white. And have a line
-// thickness ranging from 1 to the radius of the circle.
-// This function was grabbed from the SparkFun ColorLCDShield
-// library.
-void setCircle (int x0, int y0, int radius, boolean bw, int lineThickness)
-{
-  for(int r = 0; r < lineThickness; r++)
-  {
-    int f = 1 - radius;
-    int ddF_x = 0;
-    int ddF_y = -2 * radius;
-    int x = 0;
-    int y = radius;
-
-    setPixel(x0, y0 + radius, bw);
-    setPixel(x0, y0 - radius, bw);
-    setPixel(x0 + radius, y0, bw);
-    setPixel(x0 - radius, y0, bw);
-
-    while(x < y)
-    {
-      if(f >= 0)
-      {
-        y--;
-        ddF_y += 2;
-        f += ddF_y;
-      }
-      x++;
-      ddF_x += 2;
-      f += ddF_x + 1;
-
-      setPixel(x0 + x, y0 + y, bw);
-      setPixel(x0 - x, y0 + y, bw);
-      setPixel(x0 + x, y0 - y, bw);
-      setPixel(x0 - x, y0 - y, bw);
-      setPixel(x0 + y, y0 + x, bw);
-      setPixel(x0 - y, y0 + x, bw);
-      setPixel(x0 + y, y0 - x, bw);
-      setPixel(x0 - y, y0 - x, bw);
-    }
-    radius--;
-  }
-}
 
 // This function will draw a char (defined in the ASCII table
 // near the beginning of this sketch) at a defined x and y).
@@ -470,24 +389,6 @@ void setContrast(byte contrast)
   LCDWrite(LCD_COMMAND, 0x20); //Set display mode
 }
 
-/* There are two ways to do this. Either through direct commands
-to the display, or by swapping each bit in the displayMap array.
-We'll leave both methods here, comment one or the other out if
-you please. */
-void invertDisplay()
-{
-  /* Direct LCD Command option
-  LCDWrite(LCD_COMMAND, 0x20); //Tell LCD that extended commands follow
-  LCDWrite(LCD_COMMAND, 0x08 | 0x05); //Set LCD Vop (Contrast): Try 0xB1(good @ 3.3V) or 0xBF if your display is too dark
-  LCDWrite(LCD_COMMAND, 0x20); //Set display mode  */
-
-  /* Indirect, swap bits in displayMap option: */
-  for (int i=0; i < (LCD_WIDTH * LCD_HEIGHT / 8); i++)
-  {
-    displayMap[i] = ~displayMap[i] & 0xFF;
-  }
-  updateDisplay();
-}
 
 //This sends the magical commands to the PCD8544
 void lcdBegin(void)
