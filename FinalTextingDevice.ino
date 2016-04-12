@@ -13,8 +13,8 @@
 const byte ROWS = 8;
 const byte COLS = 5; 
 
-//Definition of variables for keypad
-char hexaKeys[ROWS][COLS] = {
+//Definition of variables for shifted keypad
+char hexaShiftedKeys[ROWS][COLS] = {
     {'A','B','C','D','E'},
     {'F','G','H','I','J'},
     {'K','L','M','N','O'},
@@ -22,8 +22,20 @@ char hexaKeys[ROWS][COLS] = {
     {'U','V','1','2','3'},
     {'W','X','4','5','6'},
     {'Y','Z','7','8','9'},
-    {'s','b','p','0','e'} //Shift,backspace,space,0,enter
+    {'+','b','*','0','/'} //Shift,backspace,space,0,enter
   };
+  
+//Definition of variables for non-shifted keypad 
+char hexaKeys[ROWS][COLS] = {
+    {'a','b','c','d','e'},
+    {'f','g','h','i','j'},
+    {'k','l','m','n','o'},
+    {'p','q','r','s', 't'},
+    {'u','v','1','2','3'},
+    {'w','x','4','5','6'},
+    {'y','z','7','8','9'},
+    {'^','@',' ','0','$'} //Shift,backspace,space,0,enter
+  };  
   
 //Arrays for the row pins and column pins
 byte rowPins[ROWS] = {22, 21, 20, 19, 18, 23, 14, 2}; //Pin 14=D17
@@ -31,6 +43,9 @@ byte colPins[COLS] = {11, 10, 6, 5, 3};
 
 //Initialization of an instance of the class Keypad
 Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+//Initialization of an instace of the class Keypad for the Shifted Keys
+Keypad shiftedKeypad = Keypad( makeKeymap(hexaShiftedKeys),rowPins, colPins, ROWS, COLS);
 
 //Initial setup for LCD and Xbee 
 void setup()
@@ -42,67 +57,151 @@ void setup()
   updateDisplay(); //Update display
   setContrast(50); //Sets contrast for the LCD
   delay(2000); 
-
-  /*
-  // Wait for serial to come in, then clear display and go to echo
-  while (!Serial1.available()) {
-    delay(1000);
-  }*/
   
   clearDisplay(WHITE); //Clears display
   updateDisplay(); //Update Display
 }
 
 //Variables for Texting
-String message = ""; //String variable used for concat characters
-int len = 1; //Length 
-String receivedMessage = "";
-int lengthForReceivedMessage = 1;
+String message = ">"; //String variable used for concat characters
+int len = 2; //Length 
 char * theText = "";
+boolean shifted = false;
+boolean window = true;
+boolean finishedFirstText = false;
+boolean firstText = true;
+boolean initialShift = true;
+char customKey;
+char customShiftedKey;
+
+
+static int cursorX = 0;
+static int cursorY = 0;
+
 
 void loop()
 {
-  char customKey = customKeypad.getKey();
   
-  static int cursorX = 0;
-  static int cursorY = 0;
-  
-  //Putting message together to send
-    switch (customKey)
+    //Checks which window the user wants to see
+    //Starts out in the sending window
+    if(window)
     {
-      case '\n': // New line
-        cursorY += 8;
-        break;
-      case '\r': // Return feed
-        cursorX = 0;
-        break;
-      case '~': // Use ~ to clear the screen.
-        clearDisplay(WHITE);
-        updateDisplay();
-        cursorX = 0; // reset the cursor
-        cursorY = 0;
-        break;
-      case NULL:
-        //Do Nothing
-      break;
-      default:
-        setChar(customKey, cursorX, cursorY, BLACK);
-        updateDisplay();
-        cursorX += 6; // Increment cursor
-        Serial1.write(customKey);
-        break;
-    }
-    // Manage cursor
-    if (cursorX >= (LCD_WIDTH - 4))
-    { // If the next char will be off screen...
-      cursorX = 0; // ... reset x to 0...
-      cursorY += 8; // ...and increment to next line.
-      if (cursorY >= (LCD_HEIGHT - 7))
-      { // If the next line takes us off screen...
-        cursorY = 0; // ...go back to the top.
+      
+      //Shift not pressed
+      if(!shifted)
+      {
+        customKey = customKeypad.getKey();
+        
+        
+        if(firstText && customKey != NULL)
+        {
+             firstText = false;
+             char theKey = '>';
+             setChar(theKey,cursorX, cursorY, BLACK);
+             updateDisplay();
+             cursorX += 6;
+         }//End inner if
+        
+        switch (customKey)
+        {
+          case NULL:
+            //Do Nothing
+          break;
+          //Shift key was pressed
+          case '^':
+            shifted = true;
+          break;
+          case '@': //Space key
+            cursorX -= 6;
+            setChar(' ', cursorX, cursorY, BLACK);
+            updateDisplay();
+          break;
+          case '$':
+            Serial1.write('>');
+            cursorY += 8;
+            cursorX = 0;
+            Serial1.write(customKey);
+          break;
+          default:
+            Serial1.write(customKey);
+            setChar(customKey, cursorX, cursorY, BLACK);
+            updateDisplay();
+            cursorX += 6; // Increment cursor
+          break;
+        }// End Switc
+      }//End shift if/else
+      
+      //Shift pressed
+      if(shifted)
+      {
+        customShiftedKey = shiftedKeypad.getKey();
+        
+        switch (customShiftedKey)
+        {
+          case NULL:
+            //Do Nothing
+          break;
+          //Case when switching between screens
+          case '*':
+            window = false;        
+          break;
+          //Shift key was pressed
+          case '+':
+            if(initialShift)
+            {
+                initialShift = false;
+                shifted = true;
+            }
+            else
+            {
+              shifted = false;
+            }
+          break;
+          case '$':
+            //do nothing
+          break;
+          default:
+            Serial1.write(customShiftedKey);
+            setChar(customShiftedKey, cursorX, cursorY, BLACK);
+            updateDisplay();
+            cursorX += 6; // Increment cursor
+            shifted = false;
+          break;
+       }//End switch
+    
+      }
+      // Manage cursor
+      if (cursorX >= (LCD_WIDTH - 4))
+      { // If the next char will be off screen...
+        cursorX = 0; // ... reset x to 0...
+        cursorY += 8; // ...and increment to next line.
+        if (cursorY >= (LCD_HEIGHT - 7))
+        { // If the next line takes us off screen...
+           cursorY = 0; // ...go back to the top.
+        }
       }
     }
-    
+ 
+    else //Switch window
+    {
+      clearDisplay(WHITE);
+      updateDisplay();
+      cursorX = 0; // reset the cursor
+      cursorY = 0;
+      
+
+      
+      char customShiftedKey = shiftedKeypad.getKey();
+      
+      Serial.println(customShiftedKey);
+      switch (customShiftedKey)
+      {
+         case '*':
+           window = true;
+           shifted = false;
+         break;
+      } 
+    } 
 
  
 
@@ -110,11 +209,10 @@ void loop()
   //Received information
   if (Serial1.available())
   {
-   
     char c = Serial1.read();
  
 
-    if(c != 'e')
+    if(c != '$')
     {
        message.concat(c); 
        len++; // buffer size
@@ -123,17 +221,43 @@ void loop()
     {
        message.toCharArray(theText, len);
        
-       setStr(theText, cursorX, cursorY, BLACK);
-       updateDisplay();
-       
-       message = "";
-       theText = "";
-       len = 1;
-    } 
-  }
-   
+    }//end else  
+
+  }//End if 
   
-}
+} //loop
+
+void printMessage(char * messageToPrint){
+      for(int i = 0; i < strlen(messageToPrint); i++)
+       { 
+          if(messageToPrint[i] == '>' && finishedFirstText)
+          {
+             cursorY += 8;
+             cursorX = 0;
+             setChar(messageToPrint[i], cursorX, cursorY, BLACK);
+             updateDisplay();
+             cursorX += 6;     
+          }
+          else
+          {
+            finishedFirstText = true;
+            setChar(messageToPrint[i], cursorX, cursorY, BLACK);
+            updateDisplay();
+            cursorX += 6; 
+          }  
+          if (cursorX >= (LCD_WIDTH - 4))
+          { // If the next char will be off screen...
+            cursorX = 0; // ... reset x to 0...
+            cursorY += 8; // ...and increment to next line.
+            if (cursorY >= (LCD_HEIGHT - 7))
+            { // If the next line takes us off screen...
+              cursorY = 0; // ...go back to the top.
+            }
+          }
+       }
+ 
+}//End printMessage()
+
 
 
 
