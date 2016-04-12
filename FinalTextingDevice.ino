@@ -189,7 +189,7 @@ void loop()
       cursorX = 0; // reset the cursor
       cursorY = 0;
       
-
+      printMessage(theText);
       
       char customShiftedKey = shiftedKeypad.getKey();
       
