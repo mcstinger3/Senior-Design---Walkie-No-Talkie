@@ -48,12 +48,12 @@ Keypad customKeypad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS
 Keypad shiftedKeypad = Keypad( makeKeymap(hexaShiftedKeys), rowPins, colPins, ROWS, COLS);
 
 //Variables for Texting
-char customKey;
-char customShiftedKey;
-static int cursorX = 0;
-static int cursorY = 0;
-String receivedMessage = "---Received--->";
-String sentMessage = "-----Sent-----";
+char customKey;//Value from the keypad when not shifted
+char customShiftedKey;//Value from the keypad when shifted
+static int cursorX = 0; //Values that represent pixel distance on the x-axis
+static int cursorY = 0;//Values that represent pixel distance on the y-axis
+String receivedMessage = "---Received--->";//String that will hold the received message
+String sentMessage = "-----Sent-----";//String that will hold the send message
 
 //Boolean Variables
 boolean shifted = false;
@@ -62,6 +62,11 @@ boolean finishedFirstText = false;
 boolean firstText = true;
 boolean initialShift = true;
 boolean printText = false;
+
+//Testing for long texts/////////////////////////////////////////
+boolean receivedLongText = false;
+boolean sentLongText = false;
+////////////////////////////////////////////////////////////////
 
 //Initial setup for LCD and Xbee
 void setup()
@@ -77,7 +82,7 @@ void setup()
   clearDisplay(WHITE); //Clears display
   updateDisplay(); //Update Display
   
-  printMessage(sentMessage);
+  printMessage(sentMessage);//Prints originial send display on LCD
 
 }
 
@@ -100,9 +105,10 @@ void loop()
     //Shift not pressed
     if (!shifted)
     {
+      //Obtain custom key from keypad
       customKey = customKeypad.getKey();
 
-
+      //Puts the first > on string
       if (firstText && customKey != NULL)
       {
         firstText = false;
@@ -135,24 +141,24 @@ void loop()
             //Find last spot in string and take it away
             int positionToSubtract = sentMessage.length() - 1;
             sentMessage.remove(positionToSubtract);
-            Serial1.write(customKey);
+            Serial1.write(customKey);//Write to Xbee
           } 
         break;
-        case '$': //Send key
-          Serial1.write('>');
+        case '$': //Send key was pressed
+          Serial1.write('>');//Send a new '>' to display a new text
           cursorY += 8;
           cursorX = 0;
-          sentMessage.concat('>'); 
+          sentMessage.concat('>'); //Display on LCD
           setChar('>', cursorX, cursorY, BLACK); 
           updateDisplay();
           cursorX += 6;
           printText = true;
-          Serial1.write(customKey);     
+          Serial1.write(customKey);//Send Pressed key from keypad to XBee 
         break;
         default:
-          sentMessage.concat(customKey);
-          Serial1.write(customKey);
-          setChar(customKey, cursorX, cursorY, BLACK);
+          sentMessage.concat(customKey);//Puts customKey into sentMessage
+          Serial1.write(customKey);//Sends character to other Xbee
+          setChar(customKey, cursorX, cursorY, BLACK);//Display on Screen
           updateDisplay();
           cursorX += 6; // Increment cursor
         break;
@@ -162,6 +168,7 @@ void loop()
     //Shift pressed
     if (shifted)
     {
+      //Obtain shifted value
       customShiftedKey = shiftedKeypad.getKey();
 
       switch (customShiftedKey)
@@ -174,7 +181,7 @@ void loop()
           printText = true;
         break;
         case '+':  //Shift key was pressed
-          if (initialShift)
+          if (initialShift) //Accounts for an issue with shifting on first attempt
           {
             initialShift = false;
             shifted = true;
@@ -188,17 +195,15 @@ void loop()
           //do nothing - cannot Send in Received Messages window
         break;
         default:
-          sentMessage.concat(customShiftedKey);
-          Serial1.write(customShiftedKey);
-          setChar(customShiftedKey, cursorX, cursorY, BLACK);
+          sentMessage.concat(customShiftedKey);//Put value String SentMessage
+          Serial1.write(customShiftedKey); //Send value to other Xbee
+          setChar(customShiftedKey, cursorX, cursorY, BLACK); //Update display
           updateDisplay();
-          cursorX += 6; // Increment cursor
+          cursorX += 6; 
           shifted = false;
         break;
       }//End switch
-
     }//End shifted if
-    
     textOverlap();
   }//End window if
 
@@ -210,12 +215,24 @@ void loop()
       printText = false;
       clearDisplay(WHITE);
       updateDisplay();
-      cursorX = 0; // reset the cursor
+      cursorX = 0;
       cursorY = 0;
       printMessage(receivedMessage);
     }
     
-
+    ///////////////////////////////////////////////////////////////
+    if(receivedLongText)
+    {
+      clearDisplay(WHITE);//Clear display for the new corrected overlapping text
+      updateDisplay();
+      cursorX = 0;
+      cursorY = 0;
+      receivedLongText = false;//Print only once until user overlaps again
+      printMessage(receivedMessage);
+    }
+    //////////////////////////////////////////////////////////////
+    
+    //Obtains key from custom keypad
     char customShiftedKey = shiftedKeypad.getKey();
 
     switch (customShiftedKey)
@@ -229,10 +246,10 @@ void loop()
         cursorX = 0;
         cursorY = 0;
         
-        printMessage(sentMessage);
+        printMessage(sentMessage);//Print the Users Sent interface
         
         window = true; //Go back to texting window
-        shifted = false;
+        shifted = false;//Shift button set back to off
       break;
     }
   } //End window else
@@ -240,12 +257,12 @@ void loop()
 
 
 
-  //Received information
+  //Received information from another Xbee
   if (Serial1.available())
   {
-    char c = Serial1.read();
+    char c = Serial1.read(); //Reads the value into a char value
 
-    //User has not sent the message
+    //User has not sent the message; Sending characters
     if (c != '$')
     {
       if(c == '-') //Backspace was pressed
@@ -265,21 +282,19 @@ void loop()
     {
       //User has sent the information and new message should be printed
       printText = 1;
-    }//end else
-
+    }//End Else
   }//End if
-
-
-} //End of LOOP
+} ///////////////////////////////////////////////////////End LOOP
 
 
 
-////////////////Additional Methods//////////////////////
+///////////////////////////Additional Methods/////////////////////////////////
 
 //Determines length of first text
 int determineCount()
 {
    int count = 1;
+   //obtains amount of characters for the first text
    for(int i = 15; sentMessage.charAt(i) != '>'; i++)
    {
       count++;
@@ -290,8 +305,15 @@ int determineCount()
 //Deletes first message so that user can type more
 void deleteFirstMessage()
 {
+   //The first message starting point
    int startingIndex = 14;
+   
+   //Obtain value for length of the first text
    int countForDeleting = determineCount();
+   
+   //Calls the remove method form the string class deleting the characters
+   //from the starting location to the length of the first text 
+   //in both the sent and received message
    sentMessage.remove(startingIndex, countForDeleting);
    receivedMessage.remove(startingIndex, countForDeleting);
 }
@@ -299,52 +321,54 @@ void deleteFirstMessage()
 //Determines if screen will overwrite
 void textOverwrite ()
 {
+   // If the next line takes the user off the screen.
    if (cursorY >= (LCD_HEIGHT - 7))
-   { // If the next line takes us off screen...
+   { 
       cursorY = 0; 
       cursorX = 0;
-      deleteFirstMessage();
+      deleteFirstMessage();//Call method
       clearDisplay(WHITE); //Clears display
       updateDisplay(); //Update Display
-      printMessage(sentMessage);
-   }
+      printMessage(sentMessage);//print the new sent message with deletion
+      receivedLongText = true;//Notify the other Xbee of a new text to be printed
+   }//End if statement
 }//End textOverwrite()
 
 
 //Overlap for LCD
 void textOverlap ()
 {
+  // If the next char will be off screen.
   if (cursorX >= (LCD_WIDTH - 4))
-    { // If the next char will be off screen...
-      cursorX = 0; // ... reset x to 0...
-      cursorY += 8; // ...and increment to next line.
-      if (cursorY >= (LCD_HEIGHT - 7))
-      { // If the next line takes us off screen...
-        //cursorY = 0; // ...go back to the top.
-      }
-    }
+  { 
+      cursorX = 0; 
+      cursorY += 8; //Increment to next line for Wrapping line
+  }//End of if statement
 }//End textOverlap()
 
 //Prints the String parameter
 void printMessage(String messageToPrint) {
+  //For loop used to print each individual character from String
   for (int i = 0; i < messageToPrint.length(); i++)
   {
+    //Determines if the character is '>' and not the first '>' at i=14
     if (messageToPrint.charAt(i) == '>' && i != 14)
     {
+      //New Line
       cursorY += 8;
       cursorX = 0;
+      //Print to screen
       setChar(messageToPrint.charAt(i), cursorX, cursorY, BLACK);
       updateDisplay();
       cursorX += 6;
-    }
+    }//End of if statement
     else
     {
+      //Print to screen
       setChar(messageToPrint.charAt(i), cursorX, cursorY, BLACK);
       updateDisplay();
       cursorX += 6;
-    }
-    
-    textOverlap();
-  }
-
-}//End printMessage()
+    }//End of else statement
+    textOverlap();//Method for overlap
+  }//End of for loop
+}//End printMessage() method
