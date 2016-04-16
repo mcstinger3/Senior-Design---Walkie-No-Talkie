@@ -1,5 +1,5 @@
 /*
-  Project: Two Way Texting Device using Radio Waves (XBee)
+  Project: Two Way Direct Line of Site Texting Without Satellite or Cell Tower 
   Group Members: Michael Lastinger, Chase Tenewitz, Darious Mack, Isaac Kim
 */
 
