@@ -153,13 +153,29 @@ void loop()
           } 
           else
           {
-            cursorX -= 6;
-            setChar(' ', cursorX, cursorY, BLACK);
-            updateDisplay();
-            //Find last spot in string and take it away
-            int positionToSubtract = sentMessage.length() - 1;
-            sentMessage.remove(positionToSubtract);
-            Serial1.write(customKey);//Write to Xbee
+            //Backspace goes to previous line
+            if(cursorX == 0)
+            {
+              cursorX = 78;
+              cursorY -= 8;
+              setChar(' ', cursorX, cursorY, BLACK);
+              updateDisplay();
+              //Find last spot in string and take it away
+              int positionToSubtract = sentMessage.length() -1;
+              sentMessage.remove(positionToSubtract);
+              Serial1.write(customKey);//Write to Xbee
+            }
+            //Backspace normal
+            else
+            {
+              cursorX -= 6;
+              setChar(' ', cursorX, cursorY, BLACK);
+              updateDisplay();
+              //Find last spot in string and take it away
+              int positionToSubtract = sentMessage.length() -1;
+              sentMessage.remove(positionToSubtract);
+              Serial1.write(customKey);//Write to Xbee
+            }
           } 
         break;
         case '$': //Send key was pressed
